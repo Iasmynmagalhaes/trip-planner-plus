@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 export type PaymentMethod = "Prime Gourmet" | "Dinheiro/Cartão" | "Laçador de Ofertas" | "Voucher";
 export type Location = "Gramado" | "Canela";
@@ -62,6 +63,37 @@ type Listener = (s: TripState) => void;
 let state: TripState = initial;
 const listeners = new Set<Listener>();
 let loaded = false;
+let currentUserId: string | null = null;
+let saveTimer: ReturnType<typeof setTimeout> | null = null;
+
+async function loadFromCloud(userId: string) {
+  const { data } = await supabase.from("trip_data").select("data").eq("user_id", userId).maybeSingle();
+  if (data?.data) {
+    state = { ...initial, ...(data.data as Partial<TripState>) };
+  } else {
+    state = initial;
+  }
+  listeners.forEach((l) => l(state));
+}
+
+function scheduleCloudSave() {
+  if (!currentUserId) return;
+  if (saveTimer) clearTimeout(saveTimer);
+  const uid = currentUserId;
+  saveTimer = setTimeout(async () => {
+    await supabase.from("trip_data").upsert({ user_id: uid, data: JSON.parse(JSON.stringify(state)), updated_at: new Date().toISOString() });
+  }, 600);
+}
+
+export async function setTripUser(userId: string | null) {
+  currentUserId = userId;
+  if (userId) {
+    await loadFromCloud(userId);
+  } else {
+    state = initial;
+    listeners.forEach((l) => l(state));
+  }
+}
 
 function load() {
   if (loaded || typeof window === "undefined") return;
@@ -81,6 +113,7 @@ function persist() {
 function setState(updater: (s: TripState) => TripState) {
   state = updater(state);
   persist();
+  scheduleCloudSave();
   listeners.forEach((l) => l(state));
 }
 
