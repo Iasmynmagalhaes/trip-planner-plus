@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Pencil } from "lucide-react";
 import { tripActions, useTrip, sumScheduled, formatBRL, PAYMENT_METHODS, LOCATIONS, DAYS, type Location, type PaymentMethod, type DayKey, type ScheduledItem } from "@/lib/trip-store";
 
 type Key = "food" | "tours";
@@ -14,28 +14,46 @@ export function ScheduledTab({ tabKey, title, emoji, nameLabel }: { tabKey: Key;
   const trip = useTrip();
   const items = trip[tabKey];
   const [open, setOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [loc, setLoc] = useState<Location>("Gramado");
   const [pay, setPay] = useState<PaymentMethod>("Dinheiro/Cartão");
   const [day, setDay] = useState<DayKey>("01");
   const [val, setVal] = useState("");
 
+  const resetForm = () => {
+    setEditingId(null);
+    setName(""); setLoc("Gramado"); setPay("Dinheiro/Cartão"); setDay("01"); setVal("");
+  };
+
+  const openEdit = (it: ScheduledItem) => {
+    setEditingId(it.id);
+    setName(it.name); setLoc(it.location); setPay(it.payment); setDay(it.day); setVal(String(it.value));
+    setOpen(true);
+  };
+
   const submit = () => {
     if (!name.trim()) return;
-    tripActions.addScheduled(tabKey, { name: name.trim(), location: loc, payment: pay, day, value: Number(val) || 0 });
-    setName(""); setVal(""); setOpen(false);
+    const payload = { name: name.trim(), location: loc, payment: pay, day, value: Number(val) || 0 };
+    if (editingId) {
+      tripActions.updateScheduled(tabKey, editingId, payload);
+    } else {
+      tripActions.addScheduled(tabKey, payload);
+    }
+    resetForm();
+    setOpen(false);
   };
 
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle className="flex items-center gap-2"><span>{emoji}</span>{title}</CardTitle>
-        <Dialog open={open} onOpenChange={setOpen}>
+        <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) resetForm(); }}>
           <DialogTrigger asChild>
             <Button size="sm"><Plus className="h-4 w-4 mr-1" />Incluir</Button>
           </DialogTrigger>
           <DialogContent>
-            <DialogHeader><DialogTitle>Novo registro — {title}</DialogTitle></DialogHeader>
+            <DialogHeader><DialogTitle>{editingId ? "Editar" : "Novo"} registro — {title}</DialogTitle></DialogHeader>
             <div className="space-y-3">
               <div><Label>{nameLabel}</Label><Input value={name} onChange={(e) => setName(e.target.value)} /></div>
               <div className="grid grid-cols-2 gap-3">
@@ -85,6 +103,9 @@ export function ScheduledTab({ tabKey, title, emoji, nameLabel }: { tabKey: Key;
                     <td>Dia {it.day}</td>
                     <td className="text-right font-medium">{formatBRL(it.value)}</td>
                     <td className="text-right">
+                      <Button variant="ghost" size="icon" onClick={() => openEdit(it)}>
+                        <Pencil className="h-4 w-4" />
+                      </Button>
                       <Button variant="ghost" size="icon" onClick={() => tripActions.removeScheduled(tabKey, it.id)}>
                         <Trash2 className="h-4 w-4" />
                       </Button>
