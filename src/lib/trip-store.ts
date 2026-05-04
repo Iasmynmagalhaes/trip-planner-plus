@@ -81,7 +81,7 @@ function scheduleCloudSave() {
   if (saveTimer) clearTimeout(saveTimer);
   const uid = currentUserId;
   saveTimer = setTimeout(async () => {
-    await supabase.from("trip_data").upsert({ user_id: uid, data: state as unknown as Record<string, unknown>, updated_at: new Date().toISOString() });
+    await supabase.from("trip_data").upsert({ user_id: uid, data: JSON.parse(JSON.stringify(state)), updated_at: new Date().toISOString() });
   }, 600);
 }
 
