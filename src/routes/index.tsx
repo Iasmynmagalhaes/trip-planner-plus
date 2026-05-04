@@ -1,11 +1,14 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { GeneralTab } from "@/components/trip/GeneralTab";
 import { ExpenseTab } from "@/components/trip/ExpenseTab";
 import { ScheduledTab } from "@/components/trip/ScheduledTab";
 import { RouteTab } from "@/components/trip/RouteTab";
-import { useTrip, sumSimple, sumScheduled, formatBRL } from "@/lib/trip-store";
-import { Mountain } from "lucide-react";
+import { useTrip, sumSimple, sumScheduled, formatBRL, setTripUser } from "@/lib/trip-store";
+import { Mountain, LogOut } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -18,10 +21,36 @@ export const Route = createFileRoute("/")({
 });
 
 function Index() {
+  const navigate = useNavigate();
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
+      if (!session) {
+        setTripUser(null);
+        navigate({ to: "/login" });
+      } else {
+        setTripUser(session.user.id).then(() => setReady(true));
+      }
+    });
+    supabase.auth.getSession().then(({ data }) => {
+      if (!data.session) {
+        navigate({ to: "/login" });
+      } else {
+        setTripUser(data.session.user.id).then(() => setReady(true));
+      }
+    });
+    return () => sub.subscription.unsubscribe();
+  }, [navigate]);
+
   const trip = useTrip();
   const grand =
     sumSimple(trip.flights) + sumSimple(trip.transport) + sumSimple(trip.lodging) +
     sumScheduled(trip.food) + sumScheduled(trip.tours);
+
+  if (!ready) {
+    return <div className="flex min-h-screen items-center justify-center text-muted-foreground">Carregando…</div>;
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -36,9 +65,14 @@ function Index() {
               <p className="text-xs text-muted-foreground">Gramado · Canela</p>
             </div>
           </div>
-          <div className="text-right">
-            <div className="text-xs text-muted-foreground">Total geral</div>
-            <div className="text-lg font-bold text-primary">{formatBRL(grand)}</div>
+          <div className="flex items-center gap-3">
+            <div className="text-right">
+              <div className="text-xs text-muted-foreground">Total geral</div>
+              <div className="text-lg font-bold text-primary">{formatBRL(grand)}</div>
+            </div>
+            <Button variant="ghost" size="icon" onClick={() => supabase.auth.signOut()} title="Sair">
+              <LogOut className="h-4 w-4" />
+            </Button>
           </div>
         </div>
       </header>
