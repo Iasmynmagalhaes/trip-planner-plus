@@ -145,6 +145,9 @@ export const tripActions = {
   removeScheduled(key: "food" | "tours", id: string) {
     setState((s) => ({ ...s, [key]: s[key].filter((e) => e.id !== id) }));
   },
+  updateScheduled(key: "food" | "tours", id: string, patch: Partial<Omit<ScheduledItem, "id">>) {
+    setState((s) => ({ ...s, [key]: s[key].map((e) => (e.id === id ? { ...e, ...patch } : e)) }));
+  },
 };
 
 export function sumSimple(arr: SimpleExpense[]) {
