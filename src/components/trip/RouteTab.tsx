@@ -1,64 +1,79 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { useTrip, DAYS, formatBRL, type ScheduledItem } from "@/lib/trip-store";
-import { UtensilsCrossed, MapPinned } from "lucide-react";
+import { useTrip, DAYS, formatBRL } from "@/lib/trip-store";
+import { UtensilsCrossed, MapPinned, CalendarDays } from "lucide-react";
+
+type Entry = {
+  id: string;
+  kind: "food" | "tour";
+  name: string;
+  location: string;
+  payment: string;
+  value: number;
+};
 
 export function RouteTab() {
   const trip = useTrip();
+  const grand = [...trip.food, ...trip.tours].reduce((a, b) => a + b.value, 0);
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-muted-foreground">Roteiro montado automaticamente a partir das agendas de alimentação e passeios.</p>
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="flex items-center gap-2"><CalendarDays className="h-5 w-5" />Roteiro da viagem</CardTitle>
+          <Badge variant="secondary">{formatBRL(grand)}</Badge>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground">Lista gerada automaticamente a partir das agendas de Alimentação e Passeios.</p>
+        </CardContent>
+      </Card>
+
       {DAYS.map((d) => {
-        const food = trip.food.filter((i) => i.day === d);
-        const tours = trip.tours.filter((i) => i.day === d);
-        const total = [...food, ...tours].reduce((a, b) => a + b.value, 0);
-        const empty = food.length + tours.length === 0;
+        const entries: Entry[] = [
+          ...trip.tours.filter((i) => i.day === d).map((i) => ({ id: i.id, kind: "tour" as const, name: i.name, location: i.location, payment: i.payment, value: i.value })),
+          ...trip.food.filter((i) => i.day === d).map((i) => ({ id: i.id, kind: "food" as const, name: i.name, location: i.location, payment: i.payment, value: i.value })),
+        ];
+        const total = entries.reduce((a, b) => a + b.value, 0);
+
         return (
           <Card key={d}>
             <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>Dia {d}</CardTitle>
-              <Badge variant="secondary">{formatBRL(total)}</Badge>
+              <CardTitle className="text-base">Dia {d}</CardTitle>
+              <Badge variant="outline">{formatBRL(total)}</Badge>
             </CardHeader>
             <CardContent>
-              {empty ? (
+              {entries.length === 0 ? (
                 <p className="text-sm text-muted-foreground">Sem atividades cadastradas.</p>
               ) : (
-                <div className="grid gap-4 md:grid-cols-2">
-                  <Section title="Passeios" icon={<MapPinned className="h-4 w-4" />} items={tours} />
-                  <Section title="Alimentação" icon={<UtensilsCrossed className="h-4 w-4" />} items={food} />
-                </div>
+                <ol className="relative space-y-3 border-l-2 border-primary/20 pl-4">
+                  {entries.map((e) => (
+                    <li key={e.id} className="relative">
+                      <span className="absolute -left-[22px] top-2 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                        {e.kind === "tour" ? <MapPinned className="h-2.5 w-2.5" /> : <UtensilsCrossed className="h-2.5 w-2.5" />}
+                      </span>
+                      <div className="rounded-md border bg-card p-3">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2">
+                            <Badge variant={e.kind === "tour" ? "default" : "secondary"} className="text-[10px]">
+                              {e.kind === "tour" ? "Passeio" : "Alimentação"}
+                            </Badge>
+                            <span className="font-medium">{e.name}</span>
+                          </div>
+                          <span className="text-sm font-semibold">{formatBRL(e.value)}</span>
+                        </div>
+                        <div className="mt-2 flex flex-wrap gap-1.5 text-xs text-muted-foreground">
+                          <Badge variant="outline">{e.location}</Badge>
+                          <Badge variant="outline">{e.payment}</Badge>
+                        </div>
+                      </div>
+                    </li>
+                  ))}
+                </ol>
               )}
             </CardContent>
           </Card>
         );
       })}
-    </div>
-  );
-}
-
-function Section({ title, icon, items }: { title: string; icon: React.ReactNode; items: ScheduledItem[] }) {
-  return (
-    <div>
-      <div className="mb-2 flex items-center gap-2 text-sm font-medium text-muted-foreground">{icon}{title}</div>
-      {items.length === 0 ? (
-        <p className="text-sm text-muted-foreground">—</p>
-      ) : (
-        <ul className="space-y-2">
-          {items.map((i) => (
-            <li key={i.id} className="rounded-md border bg-card p-3">
-              <div className="flex items-center justify-between">
-                <span className="font-medium">{i.name}</span>
-                <span className="text-sm">{formatBRL(i.value)}</span>
-              </div>
-              <div className="mt-1 flex flex-wrap gap-2 text-xs text-muted-foreground">
-                <Badge variant="outline">{i.location}</Badge>
-                <Badge variant="outline">{i.payment}</Badge>
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
     </div>
   );
 }
