@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
-export type PaymentMethod = "Prime Gourmet" | "Dinheiro/Cartão" | "Laçador de Ofertas" | "Voucher";
+export type PaymentMethod = "Prime Gourmet" | "Dinheiro/Cartão" | "Laçador de Ofertas" | "Voucher" | "Grátis";
 export type Location = "Gramado" | "Canela";
 export type DayKey = "01" | "02" | "03" | "04" | "05";
 
-export const PAYMENT_METHODS: PaymentMethod[] = ["Prime Gourmet", "Dinheiro/Cartão", "Laçador de Ofertas", "Voucher"];
+export const PAYMENT_METHODS: PaymentMethod[] = ["Prime Gourmet", "Dinheiro/Cartão", "Laçador de Ofertas", "Voucher", "Grátis"];
 export const LOCATIONS: Location[] = ["Gramado", "Canela"];
 export const DAYS: DayKey[] = ["01", "02", "03", "04", "05"];
 
